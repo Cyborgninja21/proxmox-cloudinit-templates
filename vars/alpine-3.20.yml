@@ -1,0 +1,8 @@
+vm_id: 9002
+os_name: alpine
+os_version: "3.20"
+image_url: https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-virt-3.20.0-x86_64.iso
+image_filename: alpine-virt-3.20.0-x86_64.iso
+memory: 512
+cores: 1
+disk_size: 2G

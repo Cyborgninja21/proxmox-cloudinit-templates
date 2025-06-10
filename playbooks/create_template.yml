@@ -1,0 +1,5 @@
+- name: Create Cloud-Init VM Template
+  hosts: proxmox
+  become: true
+  roles:
+    - vm_template

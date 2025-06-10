@@ -1,0 +1,8 @@
+vm_id: 9001
+os_name: ubuntu
+os_version: "24.04"
+image_url: https://cloud-images.ubuntu.com/minimal/releases/24.04/release/ubuntu-24.04-minimal-cloudimg-amd64.img
+image_filename: ubuntu-24.04-minimal-cloudimg-amd64.img
+memory: 2048
+cores: 2
+disk_size: 10G
