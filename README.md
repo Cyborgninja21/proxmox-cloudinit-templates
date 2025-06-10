@@ -1,164 +1,281 @@
-# Proxmox Cloud-Init VM Template Automation
+# Proxmox Cloud-Init VM Templates
 
-This repository automates the creation of Proxmox VM templates using cloud-init-enabled images for various Linux distributions like Ubuntu, Alpine, and Oracle Linux.
+An Ansible-based automation solution for creating cloud-init enabled VM templates in Proxmox VE. This project streamlines the process of downloading cloud images and converting them into reusable Proxmox templates that support cloud-init for automated VM provisioning.
 
-Each template is built with parameters defined in Ansible variable files and named using the convention `<os_name>-<os_version>`, such as `ubuntu-24.04` or `alpine-3.20`.
+## Features
 
----
+- **Automated Template Creation**: Download cloud images and convert them to Proxmox templates
+- **Cloud-Init Support**: All templates are configured with cloud-init for automated provisioning
+- **Multiple OS Support**: Pre-configured for Ubuntu, Alpine Linux, and Oracle Linux
+- **Dynamic VM ID Assignment**: Automatically assigns available VM IDs to avoid conflicts
+- **Flexible Configuration**: Easy to extend for additional operating systems
+- **Idempotent Operations**: Safe to run multiple times without conflicts
 
-## 🧰 Features
+## Supported Operating Systems
 
-- Create Proxmox VM templates with cloud-init support.
-- Download official cloud images automatically.
-- Define separate configurations for different distributions.
-- Use versioned naming (e.g., `ubuntu-24.04`, `oracle-9`).
-- Easily extendable for other Linux distributions.
-- Fully automated with Ansible.
+| OS | Version | Image Type | Default Resources |
+|---|---|---|---|
+| Ubuntu | 24.04 LTS | Minimal Cloud Image | 2GB RAM, 2 cores, 10GB disk |
+| Alpine Linux | 3.20 | Virtual ISO | 512MB RAM, 1 core, 2GB disk |
+| Oracle Linux | 9 | Cloud Image | 2GB RAM, 2 cores, 10GB disk |
 
----
+## Prerequisites
 
-## 📦 Supported Distributions
+- Proxmox VE 7.x or 8.x
+- Ansible 2.9 or higher
+- SSH access to Proxmox host with root privileges
+- Sufficient storage space for downloading and storing images
+- Network connectivity to download cloud images
 
-| Distribution | Version  | Source URL |
-|--------------|----------|------------|
-| Ubuntu       | 24.04    | cloud-images.ubuntu.com |
-| Alpine       | 3.20     | dl-cdn.alpinelinux.org |
-| Oracle Linux | 9        | yum.oracle.com |
+## Quick Start
 
-Add more by creating a new `.yml` file in `vars/`.
+### 1. Setup Project Structure
 
----
-
-## 📁 Directory Structure
-
-```
-proxmox_cloudinit_templates/
-├── ansible.cfg
-├── inventory/
-│   └── hosts
-├── playbooks/
-│   └── create_template.yml
-├── roles/
-│   └── vm_template/
-│       ├── defaults/
-│       │   └── main.yml
-│       ├── tasks/
-│       │   └── main.yml
-├── vars/
-│   ├── ubuntu-24.04.yml
-│   ├── alpine-3.20.yml
-│   └── oracle-9.yml
-└── README.md
-```
-
----
-
-## ⚙️ Prerequisites
-
-- ✅ Proxmox VE (tested with 7.x+)
-- ✅ SSH access to Proxmox node (configured in inventory)
-- ✅ Ansible (2.9+ recommended)
-- ✅ Git + GitHub CLI (`gh`) for repo setup
-
-Ensure the Proxmox CLI (`qm`) is available and cloud-init is enabled on your nodes.
-
----
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
+Run the setup script to create the project directory and all necessary files:
 
 ```bash
-git clone https://github.com/<your-gh-username>/proxmox_cloudinit_templates.git
-cd proxmox_cloudinit_templates
+curl -O https://raw.githubusercontent.com/yourusername/proxmox-cloudinit-templates/main/setup_proxmox_templates_param.sh
+chmod +x setup_proxmox_templates_param.sh
+./setup_proxmox_templates_param.sh
 ```
 
-### 2. Customize the Proxmox Host Inventory
+### 2. Configure Inventory
 
-Edit the `inventory/hosts` file:
+Edit `inventory/hosts` to match your Proxmox environment:
 
 ```ini
 [proxmox]
-proxmox-host ansible_host=192.168.1.100 ansible_user=root
+proxmox-host ansible_host=YOUR_PROXMOX_IP ansible_user=root
 ```
 
-### 3. Create a Template for a Specific OS
+### 3. Create Templates
 
-Choose one of the predefined variable files:
-
+Create Ubuntu 24.04 template:
 ```bash
-ansible-playbook -i inventory/hosts playbooks/create_template.yml -e "@vars/ubuntu-24.04.yml"
-ansible-playbook -i inventory/hosts playbooks/create_template.yml -e "@vars/alpine-3.20.yml"
-ansible-playbook -i inventory/hosts playbooks/create_template.yml -e "@vars/oracle-9.yml"
+cd proxmox-cloudinit-templates
+ansible-playbook playbooks/create_template.yml -e @vars/ubuntu-24.04.yml
 ```
 
----
+Create Alpine Linux template:
+```bash
+ansible-playbook playbooks/create_template.yml -e @vars/alpine-3.20.yml
+```
 
-## 📄 Example: Variable File (`vars/ubuntu-24.04.yml`)
+Create Oracle Linux template:
+```bash
+ansible-playbook playbooks/create_template.yml -e @vars/oracle-9.yml
+```
+
+## Project Structure
+
+```
+proxmox-cloudinit-templates/
+├── ansible.cfg                    # Ansible configuration
+├── inventory/
+│   └── hosts                      # Proxmox host inventory
+├── playbooks/
+│   └── create_template.yml        # Main template creation playbook
+├── roles/
+│   └── vm_template/
+│       ├── defaults/
+│       │   └── main.yml          # Default variables
+│       └── tasks/
+│           └── main.yml          # Template creation tasks
+└── vars/
+    ├── ubuntu-24.04.yml          # Ubuntu configuration
+    ├── alpine-3.20.yml           # Alpine configuration
+    └── oracle-9.yml              # Oracle Linux configuration
+```
+
+## Configuration
+
+### Default Settings
+
+The role uses these default settings (can be overridden in var files):
 
 ```yaml
-vm_id: 9001
-os_name: ubuntu
+os_name: "ubuntu"
 os_version: "24.04"
-image_url: https://cloud-images.ubuntu.com/minimal/releases/24.04/release/ubuntu-24.04-minimal-cloudimg-amd64.img
-image_filename: ubuntu-24.04-minimal-cloudimg-amd64.img
+memory: 1024                      # RAM in MB
+cores: 1                          # CPU cores
+disk_size: 4G                     # Disk size
+net_bridge: "vmbr0"              # Network bridge
+proxmox_storage_id: "mixedstore"  # Storage pool
+```
+
+### Storage Configuration
+
+By default, the playbook uses a storage pool named `mixedstore`. To use a different storage:
+
+1. Edit `roles/vm_template/defaults/main.yml`
+2. Change `proxmox_storage_id` to your storage pool name
+3. Or override via command line: `-e proxmox_storage_id=local-lvm`
+
+### Custom OS Configuration
+
+To add support for additional operating systems, create a new variable file in `vars/`:
+
+```yaml
+# vars/debian-12.yml
+os_name: debian
+os_version: "12"
+image_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+image_filename: debian-12-generic-amd64.qcow2
 memory: 2048
 cores: 2
 disk_size: 10G
 ```
 
-This file drives the creation of the template using your selected distribution.
+## Template Usage
 
----
+Once created, templates can be used with:
 
-## 🧪 Testing the Templates
+### Proxmox Web UI
+1. Navigate to your node in the Proxmox web interface
+2. Right-click on the template (e.g., "ubuntu-24.04")
+3. Select "Clone" to create new VMs
 
-After running the playbook, you can list the templates in Proxmox with:
-
-```bash
-qm list
+### Terraform
+```hcl
+resource "proxmox_vm_qemu" "example" {
+  name        = "my-vm"
+  target_node = "proxmox-node"
+  clone       = "ubuntu-24.04"
+  
+  # Cloud-init configuration
+  os_type   = "cloud-init"
+  ipconfig0 = "ip=dhcp"
+  
+  # Customize as needed
+  memory = 4096
+  cores  = 2
+}
 ```
 
-Each VM will be marked as a template and can be cloned as needed.
-
----
-
-## 🔁 Extend to Other Distributions
-
-To add a new OS version or distribution:
-
-1. Copy one of the existing files in `vars/`.
-2. Update the VM ID, OS name/version, and image URL.
-3. Run the playbook using your new `.yml` file.
-
----
-
-## 🔐 Security Tips
-
-- Avoid reusing `vm_id` values — ensure they are unique.
-- Prefer minimal cloud images from official sources.
-- Only run Ansible playbooks from trusted machines or CI pipelines.
-
----
-
-## 🛠 GitHub Repo Initialization
-
-To initialize and push this as a public GitHub repository using the GitHub CLI:
-
+### CLI (qm command)
 ```bash
-git init
-gh repo create proxmox_cloudinit_templates --public --source=. --remote=origin --push
+# Clone template to create new VM
+qm clone <template-id> <new-vm-id> --name my-new-vm
 ```
 
----
+## Troubleshooting
 
-## 📝 License
+### Common Issues
 
-This project is licensed under the MIT License.
+**Permission Denied**
+- Ensure SSH key authentication is configured for root user
+- Verify Proxmox user has sufficient privileges
 
----
+**Storage Not Found**
+- Check if the storage pool exists: `pvesm status`
+- Verify storage pool name in configuration matches Proxmox
 
-## 🙋 Support
+**Download Failures**
+- Verify internet connectivity from Proxmox host
+- Check if URLs in var files are accessible
+- Some images may require updated URLs
 
-If you have issues using this template builder, feel free to open an issue or PR in the GitHub repository.
+**VM ID Conflicts**
+- The script automatically finds available VM IDs starting from 9000
+- Manually check with `qm list` if issues persist
 
+### Debugging
+
+Enable verbose output:
+```bash
+ansible-playbook playbooks/create_template.yml -e @vars/ubuntu-24.04.yml -vvv
+```
+
+Check Proxmox logs:
+```bash
+journalctl -u pvedaemon -f
+```
+
+## Advanced Usage
+
+### Customizing VM Resources
+
+Override default resources per OS:
+```bash
+ansible-playbook playbooks/create_template.yml \
+  -e @vars/ubuntu-24.04.yml \
+  -e memory=4096 \
+  -e cores=4 \
+  -e disk_size=20G
+```
+
+### Batch Template Creation
+
+Create all templates at once:
+```bash
+for os_file in vars/*.yml; do
+  echo "Creating template from $os_file"
+  ansible-playbook playbooks/create_template.yml -e @"$os_file"
+done
+```
+
+### Integration with CI/CD
+
+The playbooks can be integrated into CI/CD pipelines for automated template updates:
+
+```yaml
+# .github/workflows/update-templates.yml
+name: Update Proxmox Templates
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  update-templates:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - name: Update Ubuntu Template
+        run: |
+          ansible-playbook playbooks/create_template.yml \
+            -e @vars/ubuntu-24.04.yml
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-os-support`
+3. Add your OS configuration in `vars/`
+4. Test the template creation
+5. Submit a pull request
+
+### Adding New OS Support
+
+When adding support for new operating systems:
+
+1. Research the official cloud image URL
+2. Create a new variable file in `vars/`
+3. Test template creation
+4. Update this README with the new OS information
+5. Consider resource requirements and adjust defaults
+
+## Security Considerations
+
+- Templates created with this automation have cloud-init enabled
+- Ensure proper SSH key management when using templates
+- Consider network security when downloading images
+- Regularly update templates to include latest security patches
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Proxmox VE team for the excellent virtualization platform
+- Cloud image maintainers for providing standardized images
+- Ansible community for automation tools and best practices
+
+## Support
+
+For issues and questions:
+- Check the [troubleshooting section](#troubleshooting)
+- Review Proxmox VE documentation
+- Open an issue in this repository
+- Consult the Ansible documentation for automation questions
