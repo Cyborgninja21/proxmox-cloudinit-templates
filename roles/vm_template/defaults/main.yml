@@ -1,10 +1,14 @@
-vm_id: 9000
-vm_name: "{{ os_name }}-{{ os_version }}"
 os_name: "ubuntu"
 os_version: "24.04"
 image_url: ""
 image_filename: ""
-storage: "local-lvm"
+
+proxmox_storage_id: "mixedstore"
+proxmox_storage_base_path: "/mnt/pve/{{ proxmox_storage_id }}"
+proxmox_iso_path: "{{ proxmox_storage_base_path }}/template/iso"
+proxmox_iso_volid: "{{ proxmox_storage_id }}:iso/{{ image_filename }}"
+proxmox_vm_disk_storage: "{{ proxmox_storage_id }}"
+
 memory: 1024
 cores: 1
 disk_size: 4G
