@@ -1,0 +1,89 @@
+---
+- name: Get existing VM IDs
+  command: qm list
+  register: vm_list
+
+- name: Extract VM ID list
+  set_fact:
+    vm_id_list: >-
+      {{
+        vm_list.stdout_lines[1:] | map('regex_search', '^\\d+') | select('string') | map('int') | list
+      }}
+
+- name: Set VM ID dynamically
+  set_fact:
+    vm_id: "{{ (vm_id_list | max if vm_id_list else 8990) + 10 }}"
+
+- name: Ensure ISO directory exists
+  file:
+    path: "{{ proxmox_iso_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Download cloud image
+  get_url:
+    url: "{{ image_url }}"
+    dest: "{{ proxmox_iso_path }}/{{ image_filename }}"
+    mode: '0644'
+
+- name: Create VM
+  command: >
+    qm create {{ vm_id }}
+    --name {{ os_name }}-{{ os_version }}
+    --memory {{ memory }}
+    --cores {{ cores }}
+    --net0 virtio,bridge={{ net_bridge }}
+
+- name: Import disk image directly as qcow2
+  command: >
+    qm importdisk {{ vm_id }}
+    {{ proxmox_iso_path }}/{{ image_filename }}
+    {{ proxmox_vm_disk_storage }}
+    --format qcow2
+  register: import_output
+
+- name: Debug import output
+  debug:
+    var: import_output.stdout_lines
+
+- name: Extract disk filename from import output
+  set_fact:
+    imported_disk: >-
+      {{
+        import_output.stdout_lines
+        | select('search', 'Successfully imported disk')
+        | list
+        | first
+        | regex_search('\\d+/vm-\\d+-disk-\\d+\\.qcow2')
+      }}
+  when: 
+    - import_output.stdout_lines is defined
+    - import_output.stdout_lines | select('search', 'Successfully imported disk') | list | length > 0
+
+- name: Fallback disk name if extraction fails
+  set_fact:
+    imported_disk: "{{ vm_id }}/vm-{{ vm_id }}-disk-0.qcow2"
+  when: imported_disk is not defined or imported_disk == ""
+
+- name: Debug imported disk filename
+  debug:
+    var: imported_disk
+
+- name: Attach imported disk to VM
+  command: >
+    qm set {{ vm_id }}
+    --scsihw virtio-scsi-pci
+    --scsi0 {{ proxmox_vm_disk_storage }}:{{ imported_disk }}
+
+- name: Add cloud-init drive
+  command: >
+    qm set {{ vm_id }} --ide2 {{ proxmox_vm_disk_storage }}:cloudinit
+
+- name: Set boot and serial console
+  command: >
+    qm set {{ vm_id }}
+    --boot c --bootdisk scsi0
+    --serial0 socket --vga serial0
+
+- name: Convert VM to template
+  command: qm template {{ vm_id }}
