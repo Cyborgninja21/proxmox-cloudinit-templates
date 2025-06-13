@@ -3,16 +3,55 @@
   command: qm list
   register: vm_list
 
-- name: Extract VM ID list
+- name: Debug - Show qm list output
+  debug:
+    var: vm_list.stdout
+
+- name: Extract VM ID list using column position
   set_fact:
-    vm_id_list: >-
-      {{
-        vm_list.stdout_lines[1:] | map('regex_search', '^\\d+') | select('string') | map('int') | list
-      }}
+    vm_id_list: []
+
+- name: Debug - Show VMID list
+  debug:
+    var: vm_id_list
+
+- name: Extract VM IDs from each line (first 11 chars only)
+  set_fact:
+    vm_id_list: "{{ vm_id_list + [vm_id] }}"
+  vars:
+    vm_id: "{{ item[:11] | trim }}"
+  loop: "{{ vm_list.stdout_lines[1:] }}"
+  when: vm_id is match('^\\d+$')
+
+- name: Debug - Show extracted VM IDs
+  debug:
+    var: vm_id_list
+
+- name: Filter VM IDs >= 8990
+  set_fact:
+    filtered_vm_ids: "{{ vm_id_list | map('int') | select('>', 8990) | list }}"
+
+- name: Set next available VM ID
+  set_fact:
+    next_vm_id: >-
+      {{ (filtered_vm_ids | max if filtered_vm_ids | length > 0 else 8900) + 100 }}
+
+- name: Debug - Show template range VM IDs
+  debug:
+    var: next_vm_id
 
 - name: Set VM ID dynamically
   set_fact:
-    vm_id: "{{ (vm_id_list | max if vm_id_list else 8990) + 10 }}"
+    vm_id: "{{ next_vm_id  }}"
+
+- name: Debug - Show assigned VM ID
+  debug:
+    msg: "Assigned VM ID: {{ vm_id }}"
+
+- name: Verify VM ID is not already in use
+  fail:
+    msg: "VM ID {{ vm_id }} is already in use!"
+  when: vm_id in vm_id_list
 
 - name: Ensure ISO directory exists
   file:
