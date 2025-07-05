@@ -8,6 +8,8 @@
 # Ignore default config directory.
 config/
 
+.vscode
+
 # Manifests
 # Ignore manifests directory.
 manifests/*.json
@@ -36,3 +38,4 @@ plugin.pwi
 # Ignore my host changes
 **/inventory/hosts-local
 **/inventory/hosts
+playbooks/testsudo.yml
