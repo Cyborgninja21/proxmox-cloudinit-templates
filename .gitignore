@@ -34,4 +34,4 @@ plugin.pwi
 .env
 
 # Ignore my host changes
-**/inventory/hosts
+**/inventory/hosts-local
